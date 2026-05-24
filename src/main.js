@@ -5,12 +5,20 @@ const input = document.querySelector('#lotCodigo');
 const statusEl = document.querySelector('#status');
 const resultEl = document.querySelector('#result');
 
+const SISBIC = {
+  featureServerUrl: 'https://geo.idpc.gov.co/server/rest/services/PatrimonioMaterial_Inmueble/FeatureServer/0/query',
+  experienceId: '574550eccdc04cc48089a66c5613c302',
+  dataSourceLayerId: 'dfc4cd7231c742db9926545986a16441-19a07996cb8-layer-10-19a07996d25-layer-12',
+  webMapId: 'dfc4cd7231c742db9926545986a16441',
+  experienceUrl: 'https://geo.idpc.gov.co/portal/apps/experiencebuilder/experience/'
+};
+
 const SUMMARY_SECTIONS = [
   {
     title: 'Identificación del lote seleccionado',
     fields: [
       ['Dirección principal', 'summary.lote.direccion', 'wide'],
-      ['Código de lote', 'summary.lote.lotCodigo'],
+      ['Código de lote', 'summary.lote.lotCodigo', 'lot'],
       ['Nivel de intervención', 'summary.lote.nivelIntervencion']
     ]
   },
@@ -105,6 +113,7 @@ function renderResult(data) {
       <div class="summary-body">
         ${SUMMARY_SECTIONS.map((section) => renderSection(section, data)).join('')}
         ${renderFlags(data)}
+        ${renderMultimedia(data.multimedia || [])}
         ${renderTechnicalTables(data)}
         ${renderRawJson(data.document)}
       </div>
@@ -115,6 +124,10 @@ function renderResult(data) {
   resultEl.querySelector('[data-copy-json]').addEventListener('click', async () => {
     await navigator.clipboard.writeText(JSON.stringify(data.document, null, 2));
     setStatus('JSON copiado al portapapeles.', false);
+  });
+
+  resultEl.querySelectorAll('[data-sisbic-lot-codigo]').forEach((button) => {
+    button.addEventListener('click', () => openSisBicLot(button.dataset.sisbicLotCodigo, button));
   });
 }
 
@@ -138,6 +151,22 @@ function renderField(label, value, mode) {
       <div class="${className}">
         <small>${escapeHtml(label)}</small>
         <span class="chip">${escapeHtml(text)}</span>
+      </div>
+    `;
+  }
+
+  if (mode === 'lot') {
+    return `
+      <div class="${className}">
+        <small>${escapeHtml(label)}</small>
+        <div class="lot-action">
+          <strong>${escapeHtml(text)}</strong>
+          ${text !== '----' ? `
+            <button type="button" class="secondary-button" data-sisbic-lot-codigo="${escapeAttribute(text)}">
+              Ver en SisBIC
+            </button>
+          ` : ''}
+        </div>
       </div>
     `;
   }
@@ -184,6 +213,60 @@ function renderFlags(data) {
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderMultimedia(items) {
+  if (!items.length) return '';
+
+  return `
+    <section class="section">
+      <h3 class="section-title">Multimedia y soportes asociados</h3>
+      <div class="media-grid">
+        ${items.map((media) => {
+          const nombre = noAplica(media.nombre);
+          const tipo = noAplica(media.tipo);
+          const clasificacion = noAplica(media.clasificacion);
+          const fuente = noAplica(media.fuente);
+          const fecha = noAplica(media.fechaCarga);
+          const thumb = firstUrl(media.urlThumb, media.urlPreview, media.url);
+
+          return `
+            <article class="media-item">
+              ${thumb ? `<img class="media-thumb" src="${escapeAttribute(thumb)}" alt="${escapeAttribute(nombre)}" loading="lazy" />` : ''}
+              <div class="media-title">${escapeHtml(nombre)}</div>
+              <div class="media-meta">
+                <div>Tipo: <strong>${escapeHtml(tipo)}</strong></div>
+                <div>Clasificación: <strong>${escapeHtml(clasificacion)}</strong></div>
+                <div>Fuente: <strong>${escapeHtml(fuente)}</strong></div>
+                <div>Fecha de carga: <strong>${escapeHtml(fecha)}</strong></div>
+              </div>
+              ${renderMediaActions(media)}
+            </article>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderMediaActions(media) {
+  const actions = [
+    ['Abrir enlace', media.url],
+    ['Vista previa', media.urlPreview],
+    ['Miniatura', media.urlThumb]
+  ].filter(([, url]) => isUrl(url));
+
+  if (!actions.length) return '<div class="empty">Sin enlace disponible.</div>';
+
+  return `
+    <div class="media-actions">
+      ${actions.map(([label, url]) => `
+        <a class="media-link" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">
+          ${escapeHtml(label)}
+        </a>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -265,6 +348,88 @@ function isLong(value) {
 
 function isUrl(value) {
   return /^https?:\/\//i.test(String(value || ''));
+}
+
+function firstUrl(...values) {
+  return values.find((value) => isUrl(value)) || '';
+}
+
+function normalizeLotCodigo(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function setButtonLoading(button, isLoading) {
+  if (!button) return;
+
+  if (isLoading) {
+    button.dataset.originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Abriendo...';
+    return;
+  }
+
+  button.disabled = false;
+  if (button.dataset.originalText) {
+    button.textContent = button.dataset.originalText;
+    delete button.dataset.originalText;
+  }
+}
+
+async function findSisBicObjectId(lotCodigo) {
+  const params = new URLSearchParams({
+    where: `lotcodigo='${lotCodigo}'`,
+    outFields: 'OBJECTID',
+    returnGeometry: 'false',
+    f: 'json'
+  });
+
+  const response = await fetch(`${SISBIC.featureServerUrl}?${params.toString()}`);
+  if (!response.ok) throw new Error('No se pudo consultar SisBIC.');
+
+  const data = await response.json();
+  const attributes = data?.features?.[0]?.attributes;
+  return attributes?.OBJECTID ?? attributes?.objectid ?? attributes?.ObjectId ?? attributes?.objectId ?? null;
+}
+
+async function openSisBicLot(lotCodigo, button) {
+  const codigo = normalizeLotCodigo(lotCodigo);
+  if (!codigo) {
+    setStatus('No hay un código de lote válido para consultar en SisBIC.', true);
+    return;
+  }
+
+  const targetWindow = window.open('about:blank', '_blank');
+  if (targetWindow) {
+    targetWindow.opener = null;
+    targetWindow.document.title = 'Abriendo SisBIC';
+    targetWindow.document.body.textContent = 'Consultando lote en SisBIC...';
+  }
+
+  setButtonLoading(button, true);
+
+  try {
+    const objectId = await findSisBicObjectId(codigo);
+    if (!objectId) {
+      if (targetWindow) targetWindow.close();
+      setStatus('No se encontró el lote en SisBIC.', true);
+      return;
+    }
+
+    const hash = `data_s=id%3A${SISBIC.dataSourceLayerId}%3A${objectId}&widget_8=active_datasource_id:${SISBIC.webMapId}&zoom_to_selection=true`;
+    const url = `${SISBIC.experienceUrl}?id=${SISBIC.experienceId}&find=${encodeURIComponent(codigo)}#${hash}`;
+
+    if (targetWindow) {
+      targetWindow.location.href = url;
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (error) {
+    if (targetWindow) targetWindow.close();
+    console.error(error);
+    setStatus('No se pudo abrir el lote en SisBIC. Intente nuevamente.', true);
+  } finally {
+    setButtonLoading(button, false);
+  }
 }
 
 function escapeHtml(value) {

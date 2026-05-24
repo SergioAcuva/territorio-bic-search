@@ -53,6 +53,7 @@ export default async function handler(request, response) {
       success: true,
       lotCodigo: getLotCodigo(document) || lotCodigo,
       summary: buildSummary(document, selectedPredio),
+      multimedia: buildMultimedia(document),
       technicalTables: buildTechnicalTables(document),
       document
     });
@@ -173,10 +174,27 @@ function buildSummary(doc, selectedPredio) {
     meta: {
       sectorInteresUrbanisticoNombre: firstValue(siu, ['nombre', 'Nombre']),
       sectorInteresUrbanisticoTipo: firstValue(siu, ['tipoNombre', 'tipoSector', 'TipoSector']),
-      multimediaCount: toArray(doc.multimedia).length,
+      multimediaCount: buildMultimedia(doc).length,
       colindanciaCount: toArray(doc.colindancias || doc.colindancia).length
     }
   };
+}
+
+function buildMultimedia(doc) {
+  return toArray(doc.multimedia)
+    .map((media) => asObject(media))
+    .filter((media) => Object.keys(media).length > 0)
+    .map((media) => ({
+      id: firstValue(media, ['id_multimedia', 'idMultimedia', 'IdMultimedia', 'id', '_id']),
+      nombre: firstValue(media, ['nombre', 'Nombre']),
+      tipo: firstValue(media, ['tipo_nombre', 'tipoNombre', 'TipoNombre', 'tipo', 'Tipo']),
+      clasificacion: firstValue(media, ['clasific_nombre', 'clasificacionNombre', 'ClasificacionNombre', 'clasific', 'clasificacion', 'Clasificacion']),
+      fuente: firstValue(media, ['fuente', 'Fuente']),
+      fechaCarga: formatDate(firstValue(media, ['fecha_carga', 'fechaCarga', 'FechaCarga'])),
+      url: firstValue(media, ['url', 'Url']),
+      urlPreview: firstValue(media, ['url_preview', 'urlPreview', 'UrlPreview']),
+      urlThumb: firstValue(media, ['url_thumb', 'urlThumb', 'UrlThumb'])
+    }));
 }
 
 function buildTechnicalTables(doc) {
