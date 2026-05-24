@@ -52,10 +52,10 @@ Importante: si la contraseña tiene caracteres especiales, debe ir URL-encoded. 
 ```bash
 npm install
 cp .env.example .env
-npm run dev
+npx vercel dev
 ```
 
-`npm run dev` usa `vercel dev`, que levanta el frontend y la función `/api/lote` juntos.
+`npx vercel dev` levanta el frontend y la función `/api/lote` juntos. Si solo quieres abrir la interfaz sin API, puedes usar `npm run dev`.
 
 ## Despliegue en Vercel
 
