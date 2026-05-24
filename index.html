@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta Territorio BIC</title>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="search-band">
+        <div class="search-content">
+          <p class="eyebrow">Territorio BIC</p>
+          <h1>Consulta por código de lote</h1>
+          <form id="searchForm" class="search-form">
+            <label for="lotCodigo">Código de lote</label>
+            <div class="search-row">
+              <input id="lotCodigo" name="lotCodigo" type="search" autocomplete="off" placeholder="Ej. 001234567890" required />
+              <button type="submit">Buscar</button>
+            </div>
+          </form>
+          <p id="status" class="status" role="status"></p>
+        </div>
+      </section>
+
+      <section id="result" class="result-shell" hidden></section>
+    </main>
+  </body>
+</html>
