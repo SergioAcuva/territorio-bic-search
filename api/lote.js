@@ -8,7 +8,7 @@ const TABLES = [
   ['divisionTerritorial', 'División territorial', ['divisionTerritorial']],
   ['declaratoria', 'Declaratoria patrimonial', ['declaratoria', 'inmuebleBic', 'grupoArquitectonico']],
   ['actosAdministrativos', 'Actos administrativos', ['actosAdministrativos', 'actoAdministrativo']],
-  ['proteccion', 'Condiciones de protección', ['proteccion', 'flags']],
+  ['proteccion', 'Condiciones de protección', ['proteccion']],
   ['zonaInfluenciaBicNacional', 'Zona de influencia BIC nacional', ['zonaInfluenciaBicNacional']],
   ['normaPemp', 'Norma PEMP', ['normaPemp']],
   ['sectorInteresUrbanistico', 'Sector de interés urbanístico', ['sectorInteresUrbanistico']],
