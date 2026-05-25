@@ -199,6 +199,16 @@ function buildMultimedia(doc) {
 
 function buildTechnicalTables(doc) {
   return TABLES.map(([name, title, paths]) => {
+    if (name === 'proteccion') {
+      const rows = buildProteccionRows(doc);
+      return {
+        name,
+        title,
+        columns: unique(rows.flatMap((row) => Object.keys(row))),
+        rows
+      };
+    }
+
     const rows = paths.flatMap((path) => valuesAtPath(doc, path));
     const normalizedRows = rows.map((row) => asObject(row)).filter((row) => Object.keys(row).length > 0);
     return {
@@ -208,6 +218,44 @@ function buildTechnicalTables(doc) {
       rows: normalizedRows.map((row) => omit(row, ['geometry']))
     };
   });
+}
+
+function buildProteccionRows(doc) {
+  const flags = asObject(doc.flags);
+  const proteccion = asObject(doc.proteccion);
+  const contextoArqueologico = asObject(doc.contextoArqueologico);
+
+  const row = {
+    'Bien de Interés Cultural': flagValue(flags, 'esBic'),
+    'Área de protección del entorno patrimonial': flagValue(flags, 'esApep', proteccion, 'esApep'),
+    'Sector de interés urbanístico': flagValue(flags, 'esSectorInteresUrbanistico'),
+    'Zona BIC nacional': flagValue(flags, 'esZonaBicNacional'),
+    'Colindante': flagValue(flags, 'esColindante'),
+    'PEMP': flagValue(flags, 'esPemp'),
+    'Sector PEMP': flagValue(flags, 'esSectoresPemp'),
+    'Unidad de paisaje': flagValue(flags, 'esUnidadPaisaje'),
+    'Potencial arqueológico PEMP CHB': flagValue(flags, 'esPotencialArqueologicoPempChb'),
+    'Plan de manejo arqueológico Usme': flagValue(flags, 'esPlanManejoArqueologicoUsme')
+  };
+
+  const zona = firstValue(proteccion, ['zonaInfluenciaBicNacional']);
+  if (zona) row['Detalle zona BIC nacional'] = zona;
+
+  const potencial = firstValue(contextoArqueologico, ['potencialArqueologicoCHB']);
+  if (potencial) row['Detalle potencial arqueológico CHB'] = potencial;
+
+  const plan = firstValue(contextoArqueologico, ['planManejoUsme']);
+  if (plan) row['Detalle plan manejo Usme'] = plan;
+
+  return [row];
+}
+
+function flagValue(primary, primaryKey, fallback, fallbackKey) {
+  const value = firstValue(primary, [primaryKey], fallback, [fallbackKey || primaryKey]);
+  const booleanValue = toBool(value);
+  if (booleanValue === true) return 'Sí';
+  if (booleanValue === false) return 'No';
+  return 'No aplica';
 }
 
 function valuesAtPath(doc, path) {

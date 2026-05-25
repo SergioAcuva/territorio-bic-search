@@ -161,7 +161,7 @@ function renderField(label, value, mode) {
         <small>${escapeHtml(label)}</small>
         <div class="lot-action">
           <strong>${escapeHtml(text)}</strong>
-          ${text !== '----' ? `
+          ${text !== 'No aplica' ? `
             <button type="button" class="secondary-button" data-sisbic-lot-codigo="${escapeAttribute(text)}">
               Ver en SisBIC
             </button>
@@ -207,7 +207,7 @@ function renderFlags(data) {
       </div>
       <div class="meta">
         <div class="grid">
-          ${renderField('Sector de interés urbanístico asociado', `${siu}${siuTipo !== '----' ? ` (${siuTipo})` : ''}`, 'wide')}
+          ${renderField('Sector de interés urbanístico asociado', `${siu}${siuTipo !== 'No aplica' ? ` (${siuTipo})` : ''}`, 'wide')}
           ${renderField('Multimedia asociado', valueAt(data, 'summary.meta.multimediaCount'))}
           ${renderField('Relaciones de colindancia', valueAt(data, 'summary.meta.colindanciaCount'))}
         </div>
@@ -301,7 +301,7 @@ function renderRecord(columns, row, rowIndex) {
     <div class="record">
       <div class="record-title">
         <span>Registro ${rowIndex + 1}</span>
-        ${id !== '----' ? `<span class="badge">Id: ${escapeHtml(id)}</span>` : ''}
+        ${id !== 'No aplica' ? `<span class="badge">Id: ${escapeHtml(id)}</span>` : ''}
       </div>
       <div class="grid">
         ${columns.map((column) => renderField(column, stringifyValue(row[column]))).join('')}
@@ -329,15 +329,16 @@ function valueAt(object, path) {
 }
 
 function noAplica(value) {
-  if (value === null || value === undefined) return '----';
+  if (value === null || value === undefined) return 'No aplica';
   const text = stringifyValue(value).trim();
-  return !text || text.toLowerCase() === 'no aplica' ? '----' : text;
+  return !text || text === '----' || text.toLowerCase() === 'no aplica' ? 'No aplica' : text;
 }
 
 function stringifyValue(value) {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (typeof value === 'number') return String(value);
   return JSON.stringify(value, null, 2);
 }
 
