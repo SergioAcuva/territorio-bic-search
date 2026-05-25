@@ -331,7 +331,7 @@ function valueAt(object, path) {
 function noAplica(value) {
   if (value === null || value === undefined) return 'No aplica';
   const text = stringifyValue(value).trim();
-  return !text || text === '----' || text.toLowerCase() === 'no aplica' ? 'No aplica' : text;
+  return !text || /^-+$/.test(text) || text.toLowerCase() === 'no aplica' ? 'No aplica' : text;
 }
 
 function stringifyValue(value) {
